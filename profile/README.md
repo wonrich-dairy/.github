@@ -103,12 +103,12 @@ Tool setup and full details for each area are in that area's own documentation, 
 
 | Member | Student ID | Testing area | Implemented in | Details |
 |---|---|---|---|---|
-| Mitheja Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service | [Load testing guide](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md) |
+| J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service | [Load testing guide](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md) |
 | `TODO` | `TODO` | Unit Testing & Mocking | `TODO` | `TODO: link` |
 | `TODO` | `TODO` | Code Quality & Metrics | `TODO` | `TODO: link` |
 | `TODO` | `TODO` | `TODO: fourth role` | `TODO` | `TODO: link` |
 
-#### Load & Performance Testing — Mitheja
+#### Load & Performance Testing — IT24103443
 
 JMeter simulates quality analysts using the Quality Lab Service on staging. Each one signs in, opens the work queue, reads a batch, records a chemical panel and reads it back. The test runs automatically after every staging deploy, and on demand with three load profiles:
 
@@ -120,15 +120,15 @@ JMeter simulates quality analysts using the Quality Lab Service on staging. Each
 
 A per-phase results table shows the exact step where performance breaks, which a whole-run average hides. The work queue is the slowest endpoint and the first optimisation target.
 
-#### Unit Testing & Mocking — `TODO: name`
+#### Unit Testing & Mocking — `TODO: IT no.`
 
 `TODO: two or three lines — what is tested, how test doubles isolate the service logic, how parameterised cases are used, and the coverage achieved.`
 
-#### Code Quality & Metrics — `TODO: name`
+#### Code Quality & Metrics — `TODO: IT no.`
 
 `TODO: two or three lines — tool, quality gate, key metrics (coverage, code smells, technical debt) and where the dashboard is.`
 
-#### `TODO: fourth role` — `TODO: name`
+#### `TODO: fourth role` — `TODO: IT no.`
 
 `TODO`
 
