@@ -119,7 +119,7 @@ Tool setup and full details for each area are in that area's own documentation, 
 |---|---|---|---|---|
 | J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service, processing-service | Load testing guides: [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) · [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md)|
 | Abeyweera AMPVTC | IT24103428 | Unit Testing & Mocking | processing-service | [Unit testing section](https://github.com/wonrich-dairy/processing-service/blob/develop/README.md#unit-testing--mocking-se3112) |
-| `TODO: name` | `TODO: IT no.` | Code Quality & Metrics | processing-service | [Code quality guide](https://github.com/wonrich-dairy/processing-service/blob/develop/quality/README.md), `TODO: PR link` |
+| `B G R V Senanayake` | `IT24103456` | Code Quality & Metrics | processing-service | [Code quality guide](https://github.com/wonrich-dairy/processing-service/blob/develop/quality/README.md) |
 | Alen Oshan | IT24103473 | UI / E2E Testing | processing-service | [End-to-end testing guide](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/e2e-testing.md) · [PR #37](https://github.com/wonrich-dairy/processing-service/pull/37) |
 
 #### Load & Performance Testing — IT24103443
@@ -192,7 +192,7 @@ Parameterised cases use `[Theory]` with `[InlineData]` and `[MemberData]` and te
 
 Each pipeline run writes the coverage table to its **Summary** page and uploads the Cobertura file and an HTML report as the `test-results` artifact, so the Code Quality stage can read them. Full details are in the Unit Testing & Mocking section of the processing-service README.
 
-#### Code Quality & Metrics — `TODO: IT no.`
+#### Code Quality & Metrics — `IT24103456`
 
 SonarQube runs static analysis on the Processing Service in the **Code quality** stage of every pull request and every push to `develop`. SonarQube starts inside the GitHub Actions job as a container, fresh on every run, so there is no cloud account and nothing to pay. Locally it runs in Docker at `http://localhost:9000`, and its dashboard keeps the history of every scan.
 
