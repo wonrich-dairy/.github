@@ -112,7 +112,7 @@ Tool setup and full details for each area are in that area's own documentation, 
 
 | Member | Student ID | Testing area | Implemented in | Details |
 |---|---|---|---|---|
-| Manoharie J A M | IT24103443 | Load & Performance Testing | quality-lab-service, processing-service | Load testing guides: [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) · [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md)|
+| Manoharie J A M | IT24103443 | Load & Performance Testing | processing-service, quality-lab-service | Load testing guides: [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) · [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md)|
 | Abeyweera AMPVTC | IT24103428 | Unit Testing & Mocking | processing-service | [Unit testing section](https://github.com/wonrich-dairy/processing-service/blob/develop/README.md#unit-testing--mocking-se3112) |
 | `TODO` | `TODO` | Code Quality & Metrics | `TODO` | `TODO: link` |
 | Oshan D L D A | IT24103473 | UI / E2E Testing | processing-service | [End-to-end testing guide](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/e2e-testing.md) · [PR #37](https://github.com/wonrich-dairy/processing-service/pull/37) |
