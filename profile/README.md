@@ -88,8 +88,8 @@ flowchart LR
 ### Running locally
 
 ```bash
-# Unit tests with coverage
-dotnet test --collect:"XPlat Code Coverage"
+# Unit tests with coverage, from processing-service
+dotnet test --filter "FullyQualifiedName~ProcessingService.Tests.Unit" --settings coverage.runsettings --collect:"XPlat Code Coverage"
 
 # Code quality
 TODO: command
@@ -113,7 +113,7 @@ Tool setup and full details for each area are in that area's own documentation, 
 | Member | Student ID | Testing area | Implemented in | Details |
 |---|---|---|---|---|
 | J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service, processing-service | Load testing guides: [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md) · [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) |
-| `TODO` | `TODO` | Unit Testing & Mocking | `TODO` | `TODO: link` |
+| Abeyweera AMPVTC | IT24103428 | Unit Testing & Mocking | processing-service | [Unit testing section](https://github.com/wonrich-dairy/processing-service/blob/develop/README.md#unit-testing--mocking-se3112) |
 | `TODO` | `TODO` | Code Quality & Metrics | `TODO` | `TODO: link` |
 | Alen Oshan | IT24103473 | UI / E2E Testing | processing-service | [End-to-end testing guide](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/e2e-testing.md) · [PR #37](https://github.com/wonrich-dairy/processing-service/pull/37) |
 
@@ -153,9 +153,33 @@ The work queue is the slowest endpoint and the first optimisation target.
 
 Processing Service scales linearly up to 50 users: throughput grows in step with the number of users, and the median stays around 230 ms. It meets NFR1 at every load tested, so its capacity is above 50 concurrent users. Quality Lab, by contrast, saturates between 25 and 50. `read: active tanks` is consistently the slowest Processing endpoint (p95 roughly 500–680 ms, against about 200 ms for the others).
 
-#### Unit Testing & Mocking — `TODO: IT no.`
+#### Unit Testing & Mocking — `IT24103428`
 
-`TODO: two or three lines — what is tested, how test doubles isolate the service logic, how parameterised cases are used, and the coverage achieved.`
+Unit tests for the Processing Service use xUnit with NSubstitute. They run in the **Build & unit tests** stage on every pull request and every push to `develop`, and a failing test stops the pipeline before any deployment. Each test class replaces only the collaborators that are slow or unpredictable, so a test fails only when the service's own logic is wrong. No production code was changed to make this possible.
+
+| Service under test | What the tests check | Test doubles |
+|---|---|---|
+| `ProcessingRunService` (milk unloading) | dispatch-note validation, quantity limit with a 0.01 kg tolerance, temperature range, MCC outage | `IMccDispatchClient` stub and mock, fake clock |
+| `ProcessingStageService` (heating, homogeniser, pasteuriser, cooling) | stage order, empty-tank rule, temperature limits, stage durations, completion event | `IOutboxWriter` mock, fake clock |
+| `TankTemperatureLogService` | temperature range, rounding, note trimming | fake clock |
+| Tank code rules | valid and invalid tank codes | none (pure logic) |
+
+How the doubles isolate the logic:
+- **Stub:** `IMccDispatchClient` returns a canned answer ("dispatch exists", "not found") or throws, to test how the service reacts when the MCC service is down.
+- **Mock:** `IOutboxWriter` is verified, not just used. A test asserts that exactly one event is written on success, to the right topic and keyed by batch, and that nothing is written when validation fails. When the outbox itself fails, the stage is not saved.
+- **Fake clock:** `FakeTimeProvider` replaces the system clock, so durations are exact (59 seconds is 0 minutes, 60 seconds is 1 minute) with no sleeping.
+- **In-memory database:** EF Core InMemory replaces MySQL. The `DbContext` is not mocked, because the services run real EF queries.
+
+Parameterised cases use `[Theory]` with `[InlineData]` and `[MemberData]` and test each limit just below, at and just above the boundary, for example heating 39.99 / 40 / 65 / 65.01 °C, pasteuriser 79.99 / 80 / 85 / 85.01 °C, and a dispatch quantity at the remaining amount, +0.01 kg and +0.02 kg.
+
+| Measure | Result |
+|---|---|
+| Unit test cases | 56 (in 20 test methods), 0 failures |
+| Whole test project | 81 passing (the 25 existing API and Kafka tests plus the 56 unit tests) |
+| Unit test run time | about 2 seconds, with no database, Kafka or network |
+| Line coverage | `ProcessingRunService` 100%, `ProcessingStageService` 84.8%, `TankTemperatureLogService` 100% |
+
+Each pipeline run writes the coverage table to its **Summary** page and uploads the Cobertura file and an HTML report as the `test-results` artifact, so the Code Quality stage can read them. Full details are in the Unit Testing & Mocking section of the processing-service README.
 
 #### Code Quality & Metrics — `TODO: IT no.`
 
