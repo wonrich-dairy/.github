@@ -62,6 +62,7 @@ flowchart LR
     B --> C[Code quality<br/>analysis]
     C --> D[Deploy to staging]
     D --> E[Load test<br/>JMeter]
+    D --> F[End-to-end tests<br/>Playwright]
 ```
 
 | Stage | Testing area | Tool | Fails the pipeline when |
@@ -69,7 +70,7 @@ flowchart LR
 | Build & unit tests | Unit Testing & Mocking | xUnit, NSubstitute, Coverlet | any test fails |
 | Code quality analysis | Code Quality & Metrics | `TODO: SonarCloud / coverage tool` | `TODO: quality gate rule` |
 | Load test | Load & Performance Testing | Apache JMeter 5.6.3 | p95 > 2000 ms (NFR1) or errors > 1% |
-| `TODO: fourth stage` | `TODO: fourth role` | `TODO` | `TODO` |
+| End-to-end tests | UI / E2E Testing | Playwright 1.64 (TypeScript) | any test fails (a known defect is an expected failure until it is fixed) |
 
 **Unified reporting:** every stage writes its results to the run's **Summary** page in GitHub Actions and uploads its full report as a run artifact, so all the results for one run are in one place.
 
@@ -78,9 +79,11 @@ flowchart LR
 | How | Command |
 |---|---|
 | Automatically | Merge to `develop` |
-| Whole pipeline, by hand | Actions → **`TODO: CI/CD workflow name`** → Run workflow |
+| Whole pipeline, by hand | Actions → **CI/CD — Processing Service** → Run workflow |
 | Load test only | Actions → **Performance test (JMeter)** → Run workflow → choose `load`, `stress` or `spike` |
+| End-to-end tests only | Actions → **End-to-end tests (Playwright)** → Run workflow → choose `all`, `api` or `ui` |
 | From the CLI | `gh workflow run performance.yml -R wonrich-dairy/<quality-lab-service \| processing-service> -f profile=stress` |
+| End-to-end, from the CLI | `gh workflow run e2e.yml -R wonrich-dairy/processing-service -f project=all` |
 
 ### Running locally
 
@@ -95,6 +98,12 @@ TODO: command
 read -rs PERF_PASSWORD; export PERF_PASSWORD
 HOST=<service host> AUTH_HOST=<auth host> PERF_USERNAME=<user> perf/run.sh load   # or stress / spike
 unset PERF_PASSWORD
+
+# End-to-end tests against staging, from processing-service (needs Node 20+ and Google Chrome)
+cd tests/e2e && npm ci
+npx playwright test                          # everything: the services' APIs and the frontend
+npx playwright test --project=ui --headed    # watch the browser
+npm run report                               # HTML report
 ```
 
 Tool setup and full details for each area are in that area's own documentation, linked below.
@@ -106,7 +115,7 @@ Tool setup and full details for each area are in that area's own documentation, 
 | J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service, processing-service | Load testing guides: [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md) · [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) |
 | `TODO` | `TODO` | Unit Testing & Mocking | `TODO` | `TODO: link` |
 | `TODO` | `TODO` | Code Quality & Metrics | `TODO` | `TODO: link` |
-| `TODO` | `TODO` | `TODO: fourth role` | `TODO` | `TODO: link` |
+| Alen Oshan | IT24103473 | UI / E2E Testing | processing-service | [End-to-end testing guide](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/e2e-testing.md) · [PR #37](https://github.com/wonrich-dairy/processing-service/pull/37) |
 
 #### Load & Performance Testing — IT24103443
 
@@ -152,9 +161,38 @@ Processing Service scales linearly up to 50 users: throughput grows in step with
 
 `TODO: two or three lines — tool, quality gate, key metrics (coverage, code smells, technical debt) and where the dashboard is.`
 
-#### `TODO: fourth role` — `TODO: IT no.`
+#### UI / E2E Testing — IT24103473
 
-`TODO`
+Playwright tests run against staging after every staging deploy of the Processing Service, beside the load test, and by hand. Processing sits between the other services, so the suite tests it where it meets them: every call carries a token from the auth service, and the hops between services are made by the services themselves, over HTTP and Kafka.
+
+```mermaid
+flowchart LR
+    MCC[MCC & Intake] -- dispatch note, HTTP --> PROC[Processing]
+    PROC -- Kafka --> LAB[Quality Lab]
+    PROC -- Kafka --> TRACE[Traceability]
+    LAB -- Kafka --> TRACE
+```
+
+| Suite | Tests | What it proves |
+|---|---|---|
+| Milk to a cleared batch | 9 | One delivery through all five services: intake dispatches a bowser; processing checks the note in intake, unloads it, passes factory QC, allocates the batch and runs the four stages; quality-lab receives it over Kafka and the analyst passes it; traceability shows it cleared |
+| Processing rules | 24 | Dispatch-note checks, unload limits, an occupied mixing tank, one stage at a time, heating (40–65 °C) and pasteuriser (80–85 °C) limits at their boundaries, a load that fails QC is held |
+| Role-based access | 51 | Six routes under seven roles, no token, a forged role claim, a stripped signature |
+| Unloading Bay (browser) | 14 | The deployed frontend in Chrome: unloading a bowser intake dispatched, the sensory checks and quantity limit, an unknown note, a partial unload, sign-in and role-gated screens |
+
+**Result on staging:** 98 tests, all passing, in under 2 minutes.
+
+How the tests are built: page objects with role and label locators; data made the way the system makes it (each test takes a fresh bowser from intake's API); arrange through the API, act through the screen, assert through the API; `expect.poll` instead of fixed sleeps for Kafka hops; boundary values on each temperature limit; authorization checked without writing data (a refused role gets 403 before the body is read).
+
+**Defects found.** The first three are kept as expected-failure tests (`test.fail`), so the pipeline stays green until each is fixed and then flags it:
+
+| Defect | Risk |
+|---|---|
+| Allocation skips the QC check when the request names the run | Untested milk can go into production |
+| Allocation never checks the mixing tank's capacity | A 300 kg tank accepts 301 kg |
+| Stage order stops going back but not skipping ahead | A batch can go from heating straight to the pasteuriser or to cooling |
+| Mixing tanks are never emptied after cooling | Each batch uses up one of 99 tank codes |
+| The deployed frontend returns 404 for deep links | Refreshing a screen or opening a bookmark fails |
 
 ---
 
