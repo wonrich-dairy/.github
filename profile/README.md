@@ -112,7 +112,7 @@ Tool setup and full details for each area are in that area's own documentation, 
 
 | Member | Student ID | Testing area | Implemented in | Details |
 |---|---|---|---|---|
-| J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service, processing-service | Load testing guides: [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md) · [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) |
+| J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service, processing-service | Load testing guides: [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) · [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md)|
 | Abeyweera AMPVTC | IT24103428 | Unit Testing & Mocking | processing-service | [Unit testing section](https://github.com/wonrich-dairy/processing-service/blob/develop/README.md#unit-testing--mocking-se3112) |
 | `TODO` | `TODO` | Code Quality & Metrics | `TODO` | `TODO: link` |
 | Alen Oshan | IT24103473 | UI / E2E Testing | processing-service | [End-to-end testing guide](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/e2e-testing.md) · [PR #37](https://github.com/wonrich-dairy/processing-service/pull/37) |
@@ -129,6 +129,20 @@ JMeter load tests run against two services on staging. They run automatically af
 
 A per-phase results table shows the step where performance breaks, which a whole-run average would hide.
 
+**Processing Service.** Each virtual user is a processing technician: they list active tanks and stages, log a tank temperature, read the last reading and list processing runs. Writes go to a reserved test tank (ST-99), which is deleted at the end of each run together with its readings, so every run leaves staging as it found it.
+
+| Profile | Users | Req/s | p50 | p95 | Errors | Result |
+|---|---|---|---|---|---|---|
+| `load` | 10 | 6.2 | 170 ms | 185 ms | 0% | ✅ Meets NFR1 |
+| `stress`, step 1 | 10 | 6.3 | 229 ms | 243 ms | 0% | ✅ |
+| `stress`, step 2 | 25 | 15.6 | 228 ms | 243 ms | 0% | ✅ |
+| `stress`, step 3 | 50 | 30.5 | 230 ms | 525 ms | 0% | ✅ No saturation |
+| `spike`, baseline | 5 | 3.2 | 208 ms | 612 ms | 0% | ✅ |
+| `spike`, burst | 50 | 33.2 | 206 ms | 600 ms | 0% | ✅ |
+| `spike`, recovery | 5 | 3.4 | 206 ms | 605 ms | 0% | ✅ |
+
+Processing Service scales linearly up to 50 users: throughput grows in step with the number of users, and the median stays around 230 ms. It meets NFR1 at every load tested, so its capacity is above 50 concurrent users. Quality Lab, by contrast, saturates between 25 and 50. `read: active tanks` is consistently the slowest Processing endpoint (p95 roughly 500–680 ms, against about 200 ms for the others).
+
 **Quality Lab Service.** Each virtual user is a quality analyst: they open the work queue, read a batch, record a chemical panel and read it back. Each user records panels on its own batch (`PERF-` codes), because concurrent writes to one batch collide on the panel-version index.
 
 | Profile | Users | Req/s | p50 | p95 | Errors | Result |
@@ -144,20 +158,6 @@ A per-phase results table shows the step where performance breaks, which a whole
 \* The app had been idle and Free-tier App Service unloads idle apps, so the first requests were slow. With only 76 samples in this phase, those few requests set the p95. The median is normal.
 
 Quality Lab meets NFR1 up to 25 concurrent users, and saturates between 25 and 50. The number of users doubles but throughput rises only 29% (15.0 → 19.3 req/s), and the median rises from 239 ms to 850 ms. Under the spike it slows down but returns no errors, and latency goes back to baseline once the burst ends. `read: work queue` is the slowest endpoint in every run (p95 about 1.5 s at 10 users and 3.5 s at 50) and is the first optimisation target.
-
-**Processing Service.** Each virtual user is a processing technician: they list active tanks and stages, log a tank temperature, read the last reading and list processing runs. Writes go to a reserved test tank (ST-99), which is deleted at the end of each run together with its readings, so every run leaves staging as it found it.
-
-| Profile | Users | Req/s | p50 | p95 | Errors | Result |
-|---|---|---|---|---|---|---|
-| `load` | 10 | 6.2 | 170 ms | 185 ms | 0% | ✅ Meets NFR1 |
-| `stress`, step 1 | 10 | 6.3 | 229 ms | 243 ms | 0% | ✅ |
-| `stress`, step 2 | 25 | 15.6 | 228 ms | 243 ms | 0% | ✅ |
-| `stress`, step 3 | 50 | 30.5 | 230 ms | 525 ms | 0% | ✅ No saturation |
-| `spike`, baseline | 5 | 3.2 | 208 ms | 612 ms | 0% | ✅ |
-| `spike`, burst | 50 | 33.2 | 206 ms | 600 ms | 0% | ✅ |
-| `spike`, recovery | 5 | 3.4 | 206 ms | 605 ms | 0% | ✅ |
-
-Processing Service scales linearly up to 50 users: throughput grows in step with the number of users, and the median stays around 230 ms. It meets NFR1 at every load tested, so its capacity is above 50 concurrent users. Quality Lab, by contrast, saturates between 25 and 50. `read: active tanks` is consistently the slowest Processing endpoint (p95 roughly 500–680 ms, against about 200 ms for the others).
 
 #### Unit Testing & Mocking — `IT24103428`
 
