@@ -82,7 +82,7 @@ flowchart LR
 | Whole pipeline, by hand | Actions → **CI/CD — Processing Service** → Run workflow |
 | Load test only | Actions → **Performance test (JMeter)** → Run workflow → choose `load`, `stress` or `spike` |
 | End-to-end tests only | Actions → **End-to-end tests (Playwright)** → Run workflow → choose `all`, `api` or `ui` |
-| From the CLI | `gh workflow run performance.yml -R wonrich-dairy/<quality-lab-service \| processing-service> -f profile=stress` |
+| Load test, from the CLI | `gh workflow run performance.yml -R wonrich-dairy/<quality-lab-service \| processing-service> -f profile=stress` |
 | End-to-end, from the CLI | `gh workflow run e2e.yml -R wonrich-dairy/processing-service -f project=all` |
 
 ### Running locally
