@@ -30,7 +30,7 @@ flowchart LR
     K --> TRACE
 ```
 
-Each service is deployed independently, owns its own database, and exposes a REST API. Services publish domain events to Kafka. The Traceability Dashboard consumes those events to build the end-to-end view of each batch.
+Each service is deployed independently, owns its own database and exposes a REST API. Services publish domain events to Kafka, and the Traceability Dashboard consumes those events to build an end-to-end view of each batch.
 
 ## Tech Stack
 
@@ -54,7 +54,7 @@ All repositories follow the same convention:
 
 ## Microservice Testing Pipeline (SE3112)
 
-All test layers run from one GitHub Actions pipeline. A merge to `develop` runs the stages in order, and each stage gates the next one:
+Every test layer runs from the service's GitHub Actions pipeline. A merge to `develop` runs the stages in order, and each stage gates the next:
 
 ```mermaid
 flowchart LR
@@ -66,12 +66,12 @@ flowchart LR
 
 | Stage | Testing area | Tool | Fails the pipeline when |
 |---|---|---|---|
-| Build & unit tests | Unit Testing & Mocking | xUnit, `TODO: Moq / NSubstitute` | any test fails |
+| Build & unit tests | Unit Testing & Mocking | xUnit, NSubstitute, Coverlet | any test fails |
 | Code quality analysis | Code Quality & Metrics | `TODO: SonarCloud / coverage tool` | `TODO: quality gate rule` |
 | Load test | Load & Performance Testing | Apache JMeter 5.6.3 | p95 > 2000 ms (NFR1) or errors > 1% |
 | `TODO: fourth stage` | `TODO: fourth role` | `TODO` | `TODO` |
 
-**Unified reporting:** every stage writes its results to the run's **Summary** page in GitHub Actions and uploads its full report as a run artifact. All results for one run are therefore in one place.
+**Unified reporting:** every stage writes its results to the run's **Summary** page in GitHub Actions and uploads its full report as a run artifact, so all the results for one run are in one place.
 
 ### Running the pipeline
 
@@ -80,7 +80,7 @@ flowchart LR
 | Automatically | Merge to `develop` |
 | Whole pipeline, by hand | Actions → **`TODO: CI/CD workflow name`** → Run workflow |
 | Load test only | Actions → **Performance test (JMeter)** → Run workflow → choose `load`, `stress` or `spike` |
-| From the CLI | `gh workflow run performance.yml -R wonrich-dairy/quality-lab-service -f profile=stress` |
+| From the CLI | `gh workflow run performance.yml -R wonrich-dairy/<quality-lab-service \| processing-service> -f profile=stress` |
 
 ### Running locally
 
@@ -91,9 +91,9 @@ dotnet test --collect:"XPlat Code Coverage"
 # Code quality
 TODO: command
 
-# Load test against staging (needs JMeter 5.6.3 and Python 3)
+# Load test against staging, from the service's repository (needs JMeter 5.6.3 and Python 3)
 read -rs PERF_PASSWORD; export PERF_PASSWORD
-HOST=<quality-lab host> AUTH_HOST=<auth host> PERF_USERNAME=<user> perf/run.sh load   # or stress / spike
+HOST=<service host> AUTH_HOST=<auth host> PERF_USERNAME=<user> perf/run.sh load   # or stress / spike
 unset PERF_PASSWORD
 ```
 
@@ -103,22 +103,46 @@ Tool setup and full details for each area are in that area's own documentation, 
 
 | Member | Student ID | Testing area | Implemented in | Details |
 |---|---|---|---|---|
-| J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service | [Load testing guide](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md) |
+| J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service, processing-service | Load testing guides: [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md) · [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) |
 | `TODO` | `TODO` | Unit Testing & Mocking | `TODO` | `TODO: link` |
 | `TODO` | `TODO` | Code Quality & Metrics | `TODO` | `TODO: link` |
 | `TODO` | `TODO` | `TODO: fourth role` | `TODO` | `TODO: link` |
 
 #### Load & Performance Testing — IT24103443
 
-JMeter simulates quality analysts using the Quality Lab Service on staging. Each one signs in, opens the work queue, reads a batch, records a chemical panel and reads it back. The test runs automatically after every staging deploy, and on demand with three load profiles:
+JMeter load tests run against two services on staging. They run automatically after every staging deploy (the `load` profile) and on demand with three load profiles:
 
-| Profile | Shape | Result on staging |
+| Profile | Shape | Question it answers |
 |---|---|---|
-| `load` | 10 users, steady | Meets NFR1 (p95 ≤ 2 s) |
-| `stress` | 10 → 25 → 50 users | Meets NFR1 up to 25 users; saturates between 25 and 50 (p95 ~3 s) |
-| `spike` | 5 → 50 → 5 users | 0% errors through a 10× burst; latency recovers to baseline |
+| `load` | 10 users, steady | Does the service meet NFR1 (p95 ≤ 2 s) at normal peak load? |
+| `stress` | 10 → 25 → 50 users | At what load does it stop meeting NFR1? |
+| `spike` | 5 → 50 → 5 users | Does it survive a sudden 10× burst and recover? |
 
-A per-phase results table shows the exact step where performance breaks, which a whole-run average hides. The work queue is the slowest endpoint and the first optimisation target.
+A per-phase results table shows the step where performance breaks, which a whole-run average would hide.
+
+**Quality Lab Service.** Each virtual user is a quality analyst: they open the work queue, read a batch, record a chemical panel and read it back.
+
+| Profile | Result on staging |
+|---|---|
+| `load` | Meets NFR1 |
+| `stress` | Meets NFR1 up to 25 users. Saturates between 25 and 50: throughput stops scaling and p95 reaches about 3 s |
+| `spike` | 0% errors through the burst; latency recovers to baseline |
+
+The work queue is the slowest endpoint and the first optimisation target.
+
+**Processing Service.** Each virtual user is a processing technician: they list active tanks and stages, log a tank temperature, read the last reading and list processing runs. Writes go to a reserved test tank (ST-99), which is deleted at the end of each run together with its readings, so every run leaves staging as it found it.
+
+| Profile | Users | Req/s | p50 | p95 | Errors | Result |
+|---|---|---|---|---|---|---|
+| `load` | 10 | 6.2 | 170 ms | 185 ms | 0% | ✅ Meets NFR1 |
+| `stress`, step 1 | 10 | 6.3 | 229 ms | 243 ms | 0% | ✅ |
+| `stress`, step 2 | 25 | 15.6 | 228 ms | 243 ms | 0% | ✅ |
+| `stress`, step 3 | 50 | 30.5 | 230 ms | 525 ms | 0% | ✅ No saturation |
+| `spike`, baseline | 5 | 3.2 | 208 ms | 612 ms | 0% | ✅ |
+| `spike`, burst | 50 | 33.2 | 206 ms | 600 ms | 0% | ✅ |
+| `spike`, recovery | 5 | 3.4 | 206 ms | 605 ms | 0% | ✅ |
+
+Processing Service scales linearly up to 50 users: throughput grows in step with the number of users, and the median stays around 230 ms. It meets NFR1 at every load tested, so its capacity is above 50 concurrent users. Quality Lab, by contrast, saturates between 25 and 50. `read: active tanks` is consistently the slowest Processing endpoint (p95 roughly 500–680 ms, against about 200 ms for the others).
 
 #### Unit Testing & Mocking — `TODO: IT no.`
 
