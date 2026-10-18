@@ -160,4 +160,4 @@ Processing Service scales linearly up to 50 users: throughput grows in step with
 
 ## Team
 
-SLIIT ASE — Group 16: IT24103473 · IT24103456 · IT24103428 · IT24103443
+Group 16: IT24103473 · IT24103456 · IT24103428 · IT24103443
