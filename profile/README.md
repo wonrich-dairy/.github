@@ -68,7 +68,7 @@ flowchart LR
 | Stage | Testing area | Tool | Fails the pipeline when |
 |---|---|---|---|
 | Build & unit tests | Unit Testing & Mocking | xUnit, NSubstitute, Coverlet | any test fails |
-| Code quality analysis | Code Quality & Metrics | `TODO: SonarCloud / coverage tool` | `TODO: quality gate rule` |
+| Code quality analysis | Code Quality & Metrics | SonarQube Community 26.9, SonarScanner for .NET 12, Coverlet | the quality gate fails: security worse than A, reliability worse than C, coverage below 50% or duplications above 3% |
 | Load test | Load & Performance Testing | Apache JMeter 5.6.3 | p95 > 2000 ms (NFR1) or errors > 1% |
 | End-to-end tests | UI / E2E Testing | Playwright 1.64 (TypeScript) | any test fails (a known defect is an expected failure until it is fixed) |
 
@@ -91,8 +91,13 @@ flowchart LR
 # Unit tests with coverage, from processing-service
 dotnet test --filter "FullyQualifiedName~ProcessingService.Tests.Unit" --settings coverage.runsettings --collect:"XPlat Code Coverage"
 
-# Code quality
-TODO: command
+# Code quality, from processing-service (needs Docker, PowerShell and a SonarQube token)
+docker compose -f quality/docker-compose.sonarqube.yml up -d      # SonarQube at http://localhost:9000
+./quality/setup-quality-gate.ps1 -Token <user token>               # once, creates the quality gate
+dotnet sonarscanner begin /k:"wonrich-processing-service" /s:"$PWD/quality/SonarQube.Analysis.xml" /d:sonar.token="<token>"
+dotnet build ProcessingService.slnx --no-incremental
+dotnet test ProcessingService.slnx --no-build --settings coverage.runsettings --collect:"XPlat Code Coverage" --results-directory TestResults --logger "trx;LogFileName=test-results.trx"
+dotnet sonarscanner end /d:sonar.token="<token>"
 
 # Load test against staging, from the service's repository (needs JMeter 5.6.3 and Python 3)
 read -rs PERF_PASSWORD; export PERF_PASSWORD
@@ -112,10 +117,10 @@ Tool setup and full details for each area are in that area's own documentation, 
 
 | Member | Student ID | Testing area | Implemented in | Details |
 |---|---|---|---|---|
-| Manoharie J A M | IT24103443 | Load & Performance Testing | processing-service, quality-lab-service | Load testing guides: [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) · [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md)|
+| J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service, processing-service | Load testing guides: [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) · [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md)|
 | Abeyweera AMPVTC | IT24103428 | Unit Testing & Mocking | processing-service | [Unit testing section](https://github.com/wonrich-dairy/processing-service/blob/develop/README.md#unit-testing--mocking-se3112) |
-| `TODO` | `TODO` | Code Quality & Metrics | `TODO` | `TODO: link` |
-| Oshan D L D A | IT24103473 | UI / E2E Testing | processing-service | [End-to-end testing guide](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/e2e-testing.md) · [PR #37](https://github.com/wonrich-dairy/processing-service/pull/37) |
+| `TODO: name` | `TODO: IT no.` | Code Quality & Metrics | processing-service | [Code quality guide](https://github.com/wonrich-dairy/processing-service/blob/develop/quality/README.md), `TODO: PR link` |
+| Alen Oshan | IT24103473 | UI / E2E Testing | processing-service | [End-to-end testing guide](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/e2e-testing.md) · [PR #37](https://github.com/wonrich-dairy/processing-service/pull/37) |
 
 #### Load & Performance Testing — IT24103443
 
@@ -129,8 +134,7 @@ JMeter load tests run against two services on staging. They run automatically af
 
 A per-phase results table shows the step where performance breaks, which a whole-run average would hide.
 
-**Processing Service:** 
-Each virtual user is a processing technician: they list active tanks and stages, log a tank temperature, read the last reading and list processing runs. Writes go to a reserved test tank (ST-99), which is deleted at the end of each run together with its readings, so every run leaves staging as it found it.
+**Processing Service.** Each virtual user is a processing technician: they list active tanks and stages, log a tank temperature, read the last reading and list processing runs. Writes go to a reserved test tank (ST-99), which is deleted at the end of each run together with its readings, so every run leaves staging as it found it.
 
 | Profile | Users | Req/s | p50 | p95 | Errors | Result |
 |---|---|---|---|---|---|---|
@@ -144,8 +148,7 @@ Each virtual user is a processing technician: they list active tanks and stages,
 
 Processing Service scales linearly up to 50 users: throughput grows in step with the number of users, and the median stays around 230 ms. It meets NFR1 at every load tested, so its capacity is above 50 concurrent users. Quality Lab, by contrast, saturates between 25 and 50. `read: active tanks` is consistently the slowest Processing endpoint (p95 roughly 500–680 ms, against about 200 ms for the others).
 
-**Quality Lab Service:** 
-Each virtual user is a quality analyst: they open the work queue, read a batch, record a chemical panel and read it back. Each user records panels on its own batch (`PERF-` codes), because concurrent writes to one batch collide on the panel-version index.
+**Quality Lab Service.** Each virtual user is a quality analyst: they open the work queue, read a batch, record a chemical panel and read it back. Each user records panels on its own batch (`PERF-` codes), because concurrent writes to one batch collide on the panel-version index.
 
 | Profile | Users | Req/s | p50 | p95 | Errors | Result |
 |---|---|---|---|---|---|---|
@@ -191,7 +194,30 @@ Each pipeline run writes the coverage table to its **Summary** page and uploads 
 
 #### Code Quality & Metrics — `TODO: IT no.`
 
-`TODO: two or three lines — tool, quality gate, key metrics (coverage, code smells, technical debt) and where the dashboard is.`
+SonarQube runs static analysis on the Processing Service in the **Code quality** stage of every pull request and every push to `develop`. SonarQube starts inside the GitHub Actions job as a container, fresh on every run, so there is no cloud account and nothing to pay. Locally it runs in Docker at `http://localhost:9000`, and its dashboard keeps the history of every scan.
+
+The analysis is scoped to the service code. The Selenium tests, their generated HTML report, the monitoring configs and the EF migrations are excluded, because they are not part of the service. The first unscoped scan showed 202 issues. After scoping it showed 146, and all 3 High severity reliability issues were gone, because they came from those files. Coverage comes from Coverlet while the tests run.
+
+The project uses its own quality gate, **Wonrich Processing**, created by `quality/setup-quality-gate.ps1`. The default gate (Sonar way) only checks new code, and a fresh server in CI never has new code, so it could never fail. Our gate checks the overall code with limits set at today's level, so the stage fails if quality gets worse:
+
+| Condition | Fails when | Result |
+|---|---|---|
+| Security rating | worse than A | A |
+| Reliability rating | worse than C | C |
+| Coverage | below 50% | 54.9% |
+| Duplicated lines | above 3% | 0.0% |
+
+Two security issues were fixed: a database password written in the code (a Blocker, `S6703`) and a container image running as root (`S6471`). Security went from E to A. The gate was then tested by adding a realistic fake password back, which turned security to E and failed the gate. A placeholder password such as `FakeDemoPass123` was not flagged, because SonarQube filters out obvious placeholder values to avoid false positives.
+
+| Measure | First scan | Final |
+|---|---|---|
+| Security | 2 issues, E | 0 issues, A |
+| Reliability | 46 issues, D | 27 issues, C |
+| Maintainability (code smells) | 156 issues, A | 117 issues, A |
+| Coverage | 0.0% | 54.9% |
+| Duplications | 0.3% | 0.0% |
+
+The 27 reliability and 117 maintainability issues are kept as known technical debt (about 8 hours of estimated work), tracked in SonarQube. The gate makes sure it does not grow. Each pipeline run writes the gate result and these metrics to its **Summary** page. Full details are in the [code quality guide](https://github.com/wonrich-dairy/processing-service/blob/develop/quality/README.md).
 
 #### UI / E2E Testing — IT24103473
 
