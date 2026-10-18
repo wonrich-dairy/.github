@@ -129,7 +129,8 @@ JMeter load tests run against two services on staging. They run automatically af
 
 A per-phase results table shows the step where performance breaks, which a whole-run average would hide.
 
-**Processing Service.** Each virtual user is a processing technician: they list active tanks and stages, log a tank temperature, read the last reading and list processing runs. Writes go to a reserved test tank (ST-99), which is deleted at the end of each run together with its readings, so every run leaves staging as it found it.
+**Processing Service:** 
+Each virtual user is a processing technician: they list active tanks and stages, log a tank temperature, read the last reading and list processing runs. Writes go to a reserved test tank (ST-99), which is deleted at the end of each run together with its readings, so every run leaves staging as it found it.
 
 | Profile | Users | Req/s | p50 | p95 | Errors | Result |
 |---|---|---|---|---|---|---|
@@ -143,7 +144,8 @@ A per-phase results table shows the step where performance breaks, which a whole
 
 Processing Service scales linearly up to 50 users: throughput grows in step with the number of users, and the median stays around 230 ms. It meets NFR1 at every load tested, so its capacity is above 50 concurrent users. Quality Lab, by contrast, saturates between 25 and 50. `read: active tanks` is consistently the slowest Processing endpoint (p95 roughly 500–680 ms, against about 200 ms for the others).
 
-**Quality Lab Service.** Each virtual user is a quality analyst: they open the work queue, read a batch, record a chemical panel and read it back. Each user records panels on its own batch (`PERF-` codes), because concurrent writes to one batch collide on the panel-version index.
+**Quality Lab Service:** 
+Each virtual user is a quality analyst: they open the work queue, read a batch, record a chemical panel and read it back. Each user records panels on its own batch (`PERF-` codes), because concurrent writes to one batch collide on the panel-version index.
 
 | Profile | Users | Req/s | p50 | p95 | Errors | Result |
 |---|---|---|---|---|---|---|
