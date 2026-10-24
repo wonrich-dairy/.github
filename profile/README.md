@@ -146,23 +146,7 @@ A per-phase results table shows the step where performance breaks, which a whole
 | `spike`, burst | 50 | 33.2 | 206 ms | 600 ms | 0% | ✅ |
 | `spike`, recovery | 5 | 3.4 | 206 ms | 605 ms | 0% | ✅ |
 
-Processing Service scales linearly up to 50 users: throughput grows in step with the number of users, and the median stays around 230 ms. It meets NFR1 at every load tested, so its capacity is above 50 concurrent users. Quality Lab, by contrast, saturates between 25 and 50. `read: active tanks` is consistently the slowest Processing endpoint (p95 roughly 500–680 ms, against about 200 ms for the others).
-
-**Quality Lab Service.** Each virtual user is a quality analyst: they open the work queue, read a batch, record a chemical panel and read it back. Each user records panels on its own batch (`PERF-` codes), because concurrent writes to one batch collide on the panel-version index.
-
-| Profile | Users | Req/s | p50 | p95 | Errors | Result |
-|---|---|---|---|---|---|---|
-| `load` | 10 | 5.7 | 218 ms | 730 ms | 0% | ✅ Meets NFR1 |
-| `stress`, step 1 | 10 | 6.1 | 222 ms | 463 ms | 0% | ✅ |
-| `stress`, step 2 | 25 | 15.0 | 239 ms | 656 ms | 0% | ✅ |
-| `stress`, step 3 | 50 | 19.3 | 850 ms | 3044 ms | 0% | ❌ Saturated |
-| `spike`, baseline | 5 | 2.7 | 287 ms | 2148 ms* | 0% | ⚠️ Cold start |
-| `spike`, burst | 50 | 15.7 | 947 ms | 5164 ms | 0% | ❌ Slows down, no errors |
-| `spike`, recovery | 5 | 3.1 | 243 ms | 1088 ms | 0% | ✅ Recovered |
-
-\* The app had been idle and Free-tier App Service unloads idle apps, so the first requests were slow. With only 76 samples in this phase, those few requests set the p95. The median is normal.
-
-Quality Lab meets NFR1 up to 25 concurrent users, and saturates between 25 and 50. The number of users doubles but throughput rises only 29% (15.0 → 19.3 req/s), and the median rises from 239 ms to 850 ms. Under the spike it slows down but returns no errors, and latency goes back to baseline once the burst ends. `read: work queue` is the slowest endpoint in every run (p95 about 1.5 s at 10 users and 3.5 s at 50) and is the first optimisation target.
+Processing Service scales linearly up to 50 users: throughput grows in step with the number of users, and the median stays around 230 ms. It meets NFR1 at every load tested, so its capacity is above 50 concurrent users. `read: active tanks` is consistently the slowest Processing endpoint (p95 roughly 500–680 ms, against about 200 ms for the others).
 
 #### Unit Testing & Mocking — `IT24103428`
 
