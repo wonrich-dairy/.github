@@ -82,7 +82,7 @@ flowchart LR
 | Whole pipeline, by hand | Actions → **CI/CD — Processing Service** → Run workflow |
 | Load test only | Actions → **Performance test (JMeter)** → Run workflow → choose `load`, `stress` or `spike` |
 | End-to-end tests only | Actions → **End-to-end tests (Playwright)** → Run workflow → choose `all`, `api` or `ui` |
-| Load test, from the CLI | `gh workflow run performance.yml -R wonrich-dairy/<quality-lab-service \| processing-service> -f profile=stress` |
+| Load test, from the CLI | `gh workflow run performance.yml -R wonrich-dairy/processing-service -f profile=stress` |
 | End-to-end, from the CLI | `gh workflow run e2e.yml -R wonrich-dairy/processing-service -f project=all` |
 
 ### Running locally
@@ -117,7 +117,7 @@ Tool setup and full details for each area are in that area's own documentation, 
 
 | Member | Student ID | Testing area | Implemented in | Details |
 |---|---|---|---|---|
-| J A M Manoharie | IT24103443 | Load & Performance Testing | quality-lab-service, processing-service | Load testing guides: [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md) · [Quality Lab](https://github.com/wonrich-dairy/quality-lab-service/blob/develop/docs/performance-testing.md)|
+| J A M Manoharie | IT24103443 | Load & Performance Testing | processing-service | Load testing guides: [Processing](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/performance-testing.md)|
 | Abeyweera AMPVTC | IT24103428 | Unit Testing & Mocking | processing-service | [Unit testing section](https://github.com/wonrich-dairy/processing-service/blob/develop/README.md#unit-testing--mocking-se3112) |
 | `B G R V Senanayake` | `IT24103456` | Code Quality & Metrics | processing-service | [Code quality guide](https://github.com/wonrich-dairy/processing-service/blob/develop/quality/README.md) |
 | Alen Oshan | IT24103473 | UI / E2E Testing | processing-service | [End-to-end testing guide](https://github.com/wonrich-dairy/processing-service/blob/develop/docs/e2e-testing.md) · [PR #37](https://github.com/wonrich-dairy/processing-service/pull/37) |
